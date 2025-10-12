@@ -568,8 +568,8 @@ function App() {
           <div className="input-footer">
             <p className="disclaimer-small">
               {language === 'Swahili' ? 
-                'Msaidizi wa Afya - Ushauri wa awali tu. Si badala ya daktari.' :
-                'Health Assistant - Preliminary advice only. Not a substitute for a doctor.'}
+                'Msaidizi wa Afya. Ushauri wa awali tu. Si badala ya daktari.' :
+                'Health Assistant. Preliminary advice only. Not a substitute for a doctor.'}
             </p>
           </div>
         </div>
