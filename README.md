@@ -1,6 +1,25 @@
-# Swahili Health Symptom Checker
+# Afyachecker
 
+![Banner](https://capsule-render.vercel.app/api?type=venom&height=200&color=0:43cea2,100:185a9d&text=%20AfyaChecker&textBg=false&desc=(Chunguza+afya+yako)&descAlign=79&fontAlign=50&descAlignY=70&fontColor=f7f5f5)
+
+<p align="center">
 This project is a web application that allows users to enter health symptoms in Swahili and get a preliminary diagnosis and advice. The frontend is built with React and the backend is a FastAPI server that uses the ChatGPT API for analysis.
+</p>
+
+![afyachecker](https://img.shields.io/badge/React-18.2.0-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.68.0-green) ![OpenAI API](https://img.shields.io/badge/OpenAI-API-brightgreen)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Project Structure
 
