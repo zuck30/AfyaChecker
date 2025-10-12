@@ -715,8 +715,8 @@ body {
 /* Input Area */
 .input-container {
   padding: 20px;
-  background: var(--secondary-bg);
-  border-top: 1px solid var(--border-color);
+
+
   position: sticky;
   bottom: 0;
 }
