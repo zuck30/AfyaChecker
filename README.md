@@ -12,14 +12,28 @@ This project is a web application that allows users to enter health symptoms in 
 
 
 
+<h2 id=lang>Tech Stack</h2>
+
+**Frontend**
+
+![technologies](https://skillicons.dev/icons?i=react,js,html,css&perline=10)
+
+**Backend**
+
+![technologies](https://skillicons.dev/icons?i=python,fastapi&perline=10)
+
+**Tools & Platforms**
+
+![technologies](https://skillicons.dev/icons?i=github,vscode&perline=10)
 
 
+<h2> Quick Start</h2>
 
+### Prerequisites
 
-
-
-
-
+- Python 3.8+
+- Node.js 14+
+- OpenAI Developer Account
 
 ## Project Structure
 
