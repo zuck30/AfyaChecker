@@ -280,7 +280,7 @@ function App() {
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <img src={Logo} alt="Health AI" className="logo-icon" />
-            <span className="logo-text">HealthAI</span>
+            <span className="logo-text">AfyaChecker</span>
           </div>
           <button 
             className="new-chat-btn-sidebar"
