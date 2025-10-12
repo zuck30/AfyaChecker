@@ -403,7 +403,7 @@ function App() {
                   <img src={Logo} alt="AI" className="ai-avatar" />
                 </div>
                 <h1 className="welcome-title">
-                  {language === 'Swahili' ? 'Karibu kwenye Msaidizi wa Afya' : 'Welcome to Health Assistant'}
+                  {language === 'Swahili' ? 'Karibu kwa AfyaChecker' : 'Welcome to AfyaChecker'}
                 </h1>
                 <p className="welcome-subtitle">
                   {language === 'Swahili' ? 
