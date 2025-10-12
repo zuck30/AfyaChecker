@@ -79,5 +79,4 @@ This project is a web application that allows users to enter health symptoms in 
 ## Usage
 
 1.  Open your web browser and navigate to `http://localhost:3000`.
-2.  Enter your symptoms in the text area and select your language.
-3.  Click the "Analyze Symptoms" button to get the analysis.
+2.  Interact with an AI.
