@@ -5,8 +5,7 @@ import os
 
 app = FastAPI()
 
-# Configure your OpenAI API key
-# Make sure to set the OPENAI_API_KEY environment variable
+# here is OPENAI_API_KEY environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class SymptomRequest(BaseModel):
@@ -16,7 +15,7 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        prompt = f"Analyze the following symptoms in {request.language} and provide a possible diagnosis and advice: {request.symptoms}"
+        prompt = f"Your name is AfyaChecker, Health AI Assistant, You are friendly and funny, and you have compassion, Analyze the following symptoms in {request.language} and provide a possible diagnosis and advice, you should base much in tanzania: {request.symptoms}"
 
         response = openai.Completion.create(
             engine="text-davinci-003",
@@ -34,4 +33,4 @@ async def analyze_symptoms(request: SymptomRequest):
 
 @app.get("/")
 async def read_root():
-    return {"message": "Welcome to the Swahili Health Symptom Checker API"}
+    return {"message": "Welcome to AfyaChecker API"}
