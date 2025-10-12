@@ -74,7 +74,8 @@ function App() {
 
     try {
       // Simulate API call - replace with your actual endpoint
-      const response = await fetch('/analyze', {
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${apiUrl}/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
