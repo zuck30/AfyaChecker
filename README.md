@@ -80,3 +80,20 @@ This project is a web application that allows users to enter health symptoms in 
 
 1.  Open your web browser and navigate to `http://localhost:3000`.
 2.  Interact with an AI.
+
+
+
+<h2> I need coffee to stay alive. Yes i'm that Dumb.</h2>
+<p>
+    <a href="https://www.buymeacoffee.com/zuck30" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-red.png" alt="Buy Me A Coffee" height="30px" ></a>
+</p>
+
+## License
+
+This project is licensed under the MIT License, see the [LICENSE.md](LICENSE.md) file for details.
+
+## Support
+
+If you have any questions or issues, please open an issue on GitHub or contact mwalyangashadrack@gmail.com
+
+## Enjoy!
