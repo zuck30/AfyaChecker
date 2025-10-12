@@ -294,7 +294,8 @@ function App() {
         <div className="sidebar-content">
           <div className="sidebar-section">
             <h3 className="section-title">
-              {language === 'Swahili' ? 'Historia' : 'History'}
+              <br></br>
+              {language === 'Swahili' ? ' Historia' : 'History'}
             </h3>
             <div className="search-container">
               <FiSearch className="search-icon" />
