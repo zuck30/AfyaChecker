@@ -8,7 +8,6 @@ function App() {
   const [language, setLanguage] = useState('Swahili');
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,11 +47,9 @@ function App() {
 
   const handleAnalyze = async () => {
     if (!symptoms.trim()) {
-      setError(language === 'Swahili' ? 'Tafadhali weka dalili.' : 'Please enter symptoms.');
       return;
     }
     
-    setError('');
     setLoading(true);
     
     const userMessage = {
@@ -130,7 +127,6 @@ function App() {
 
   const handleQuickPrompt = (prompt) => {
     setSymptoms(language === 'Swahili' ? prompt.sw : prompt.en);
-    setError('');
     textareaRef.current?.focus();
   };
 
@@ -140,7 +136,6 @@ function App() {
       handleAnalyze();
     } else if (e.key === 'Escape') {
       setSymptoms('');
-      setError('');
     }
   };
 
@@ -150,7 +145,6 @@ function App() {
     setFavorites([]);
     localStorage.removeItem('chatFavorites');
     setShowClearModal(false);
-    setError('');
   };
 
   const copyToClipboard = async (text, messageId) => {
@@ -166,7 +160,6 @@ function App() {
   const newChat = () => {
     setChatHistory([]);
     setSymptoms('');
-    setError('');
     setSidebarOpen(false);
   };
 
