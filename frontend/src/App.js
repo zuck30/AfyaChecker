@@ -73,7 +73,7 @@ function App() {
     setSymptoms('');
 
     try {
-      // Simulate API call - replace with your actual endpoint
+
       const apiUrl = process.env.REACT_APP_API_URL || '';
       const response = await fetch(`${apiUrl}/analyze`, {
         method: 'POST',
