@@ -5,9 +5,11 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+# CORS setup for Netlify frontend
 origins = [
-    "https://afyaai.netlify.app",  
-    "http://localhost:3000", 
+    "https://afyaai.netlify.app",  # Replace with your actual Netlify URL
+    "http://localhost:3000",  # For local testing
     "*"
 ]
 app.add_middleware(
@@ -27,7 +29,7 @@ class SymptomRequest(BaseModel):
 
 def sanitize_symptoms(symptoms: str) -> str:
     """Sanitize input to reduce safety filter triggers."""
-    sensitive_terms = ["suicide", "self-harm", "severe bleeding", "graphic injury"] 
+    sensitive_terms = ["suicide", "self-harm", "severe bleeding", "graphic injury", "chest pain", "shortness of breath"]
     sanitized = symptoms.lower()
     for term in sensitive_terms:
         sanitized = sanitized.replace(term, "[REDACTED]")
@@ -36,7 +38,7 @@ def sanitize_symptoms(symptoms: str) -> str:
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        # Initialize model with safety settings for medical content
+        # Initialize model with very permissive safety settings
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config=genai.types.GenerationConfig(
@@ -47,20 +49,19 @@ async def analyze_symptoms(request: SymptomRequest):
                 genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
                 genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
                 genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,  # More permissive for medical
+                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,  # Most permissive
             }
         )
 
-        # Sanitize symptoms to avoid safety triggers
+        # Sanitize symptoms
         sanitized_symptoms = sanitize_symptoms(request.symptoms)
 
-        # Construct prompt with explicit medical context
+        # Simplified prompt to reduce safety triggers
         prompt = (
-            f"You are AfyaChecker, a friendly and compassionate Health AI Assistant. "
-            f"Your role is to provide general, non-binding health information in {request.language}. "
-            f"Analyze the following symptoms, suggest possible common conditions in Tanzania (e.g., malaria, typhoid), "
-            f"and recommend seeking care at local clinics like Aga Khan Hospital or Muhimbili National Hospital. "
-            f"Always include: 'This is not medical advice; consult a doctor.' "
+            f"You are AfyaChecker, a health information tool providing general, non-medical advice in {request.language}. "
+            f"Based on the symptoms provided, suggest possible common conditions in Tanzania (e.g., malaria, typhoid) "
+            f"and recommend visiting local clinics like Aga Khan Hospital or Muhimbili National Hospital. "
+            f"Always state: 'This is not medical advice; consult a doctor.' "
             f"Symptoms: {sanitized_symptoms}"
         )
 
@@ -76,7 +77,8 @@ async def analyze_symptoms(request: SymptomRequest):
                     "safety_ratings": [
                         {"category": str(r.category), "probability": str(r.probability)}
                         for r in response.prompt_feedback.safety_ratings
-                    ] if hasattr(response.prompt_feedback, 'safety_ratings') else []
+                    ] if hasattr(response.prompt_feedback, 'safety_ratings') else [],
+                    "sanitized_input": sanitized_symptoms
                 },
                 "input_symptoms": request.symptoms
             }
@@ -86,7 +88,8 @@ async def analyze_symptoms(request: SymptomRequest):
             return {
                 "error": "No valid response content returned.",
                 "details": "Response may have been blocked or empty.",
-                "input_symptoms": request.symptoms
+                "input_symptoms": request.symptoms,
+                "sanitized_input": sanitized_symptoms
             }
 
         analysis = response.text.strip()
