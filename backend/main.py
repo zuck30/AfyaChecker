@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import google.generativeai as genai
+from groq import Groq
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,8 +8,8 @@ app = FastAPI()
 
 # CORS setup for Netlify frontend
 origins = [
-    "https://afyaai.netlify.app",  # Replace with your actual Netlify URL
-    "http://localhost:3000",  # For local testing
+    "https://afyachecker.netlify.app/", 
+    "http://localhost:3000",  
     "*"
 ]
 app.add_middleware(
@@ -20,16 +20,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure Google API key
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# Configure Groq API client
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 class SymptomRequest(BaseModel):
     symptoms: str
     language: str
 
 def sanitize_symptoms(symptoms: str) -> str:
-    """Sanitize input to reduce safety filter triggers."""
-    sensitive_terms = ["suicide", "self-harm", "severe bleeding", "graphic injury", "chest pain", "shortness of breath"]
+    """Sanitize input for safety and clarity."""
+    sensitive_terms = ["suicide", "self-harm", "severe bleeding", "graphic injury"]
     sanitized = symptoms.lower()
     for term in sensitive_terms:
         sanitized = sanitized.replace(term, "[REDACTED]")
@@ -38,61 +38,30 @@ def sanitize_symptoms(symptoms: str) -> str:
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        # Initialize model with very permissive safety settings
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            generation_config=genai.types.GenerationConfig(
-                max_output_tokens=200,
-                temperature=0.7,
-            ),
-            safety_settings={
-                genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_NONE,  # Most permissive
-            }
-        )
-
         # Sanitize symptoms
         sanitized_symptoms = sanitize_symptoms(request.symptoms)
 
-        # Simplified prompt to reduce safety triggers
+        # Construct prompt
         prompt = (
-            f"You are AfyaChecker, a health information tool providing general, non-medical advice in {request.language}. "
-            f"Based on the symptoms provided, suggest possible common conditions in Tanzania (e.g., malaria, typhoid) "
-            f"and recommend visiting local clinics like Aga Khan Hospital or Muhimbili National Hospital. "
-            f"Always state: 'This is not medical advice; consult a doctor.' "
+            f"You are AfyaChecker, a friendly and compassionate Health AI Assistant. "
+            f"Analyze the following symptoms in {request.language}, suggest possible common conditions in Tanzania "
+            f"(e.g., malaria, typhoid), and recommend visiting local clinics like Aga Khan Hospital or Muhimbili National Hospital. "
+            f"Always include: 'This is not medical advice; consult a doctor.' "
             f"Symptoms: {sanitized_symptoms}"
         )
 
-        # Generate response
-        response = model.generate_content(prompt)
+        # Generate response with Groq
+        chat_completion = client.chat.completions.create(
+            model="llama-3.1-70b-versatile",  # Free, strong model
+            messages=[
+                {"role": "system", "content": "You are a helpful health information assistant providing general, non-medical advice."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=200,
+            temperature=0.7,
+        )
 
-        # Check for safety block
-        if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason is not None:
-            return {
-                "error": "Response blocked due to safety filters. Try rephrasing symptoms.",
-                "details": {
-                    "block_reason": str(response.prompt_feedback.block_reason),
-                    "safety_ratings": [
-                        {"category": str(r.category), "probability": str(r.probability)}
-                        for r in response.prompt_feedback.safety_ratings
-                    ] if hasattr(response.prompt_feedback, 'safety_ratings') else [],
-                    "sanitized_input": sanitized_symptoms
-                },
-                "input_symptoms": request.symptoms
-            }
-
-        # Extract text safely
-        if not hasattr(response, 'text') or not response.text:
-            return {
-                "error": "No valid response content returned.",
-                "details": "Response may have been blocked or empty.",
-                "input_symptoms": request.symptoms,
-                "sanitized_input": sanitized_symptoms
-            }
-
-        analysis = response.text.strip()
+        analysis = chat_completion.choices[0].message.content.strip()
         return {"analysis": analysis}
 
     except Exception as e:
@@ -104,15 +73,11 @@ async def analyze_symptoms(request: SymptomRequest):
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to AfyaChecker API. Powered by Gemini"}
+    return {"message": "Welcome to AfyaChecker API. Powered by Groq"}
 
-@app.get("/models")
-async def list_models():
-    try:
-        models = genai.list_models()
-        return {"available_models": [m.name for m in models if 'generateContent' in m.supported_generation_methods]}
-    except Exception as e:
-        return {"error": str(e)}
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
 
 
 # from fastapi import FastAPI
