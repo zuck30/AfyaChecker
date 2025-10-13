@@ -8,8 +8,8 @@ app = FastAPI()
 
 # CORS setup for Netlify frontend
 origins = [
-    "https://afyachecker.netlify.app",  # Replace with your actual Netlify URL
-    "http://localhost:3000",  # For local testing
+    "https://afyachecker.netlify.app",  
+    "http://localhost:3000", 
     "*"
 ]
 app.add_middleware(
@@ -60,7 +60,7 @@ async def analyze_symptoms(request: SymptomRequest):
 
         # Generate response with Groq
         chat_completion = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a helpful health information assistant providing general, non-medical advice."},
                 {"role": "user", "content": prompt}
@@ -86,6 +86,8 @@ async def analyze_symptoms(request: SymptomRequest):
             error_details["hint"] = "Groq rate limit reached. Wait 1-2 minutes and retry."
         elif "connection" in str(e).lower():
             error_details["hint"] = "Network issue connecting to Groq. Check Render or Groq status."
+        elif "model_decommissioned" in str(e).lower():
+            error_details["hint"] = "Model deprecated. Update to llama-3.3-70b-versatile."
         return error_details
 
 @app.get("/")
