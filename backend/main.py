@@ -5,7 +5,7 @@ import os
 
 app = FastAPI()
 
-# here is OPENAI_API_KEY environment variable
+# Set OpenAI API key from environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 class SymptomRequest(BaseModel):
@@ -15,22 +15,32 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        prompt = f"Your name is AfyaChecker, Health AI Assistant, You are friendly and funny, and you have compassion, Analyze the following symptoms in {request.language} and provide a possible diagnosis and advice, you should base much in tanzania: {request.symptoms}"
+        # Define the prompt as a system message for the chat model
+        messages = [
+            {
+                "role": "system",
+                "content": f"Your name is AfyaChecker or AfyaAI, a friendly, funny, and compassionate Health AI Assistant. Analyze the following symptoms in {request.language} and provide a possible diagnosis and advice, tailored to the context of Tanzania."
+            },
+            {
+                "role": "user",
+                "content": request.symptoms
+            }
+        ]
 
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
+        # Use the Chat endpoint with a supported model
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
             max_tokens=200,
             temperature=0.7,
-            n=1,
-            stop=None,
+            n=1
         )
 
-        analysis = response.choices[0].text.strip()
+        analysis = response.choices[0].message.content.strip()
         return {"analysis": analysis}
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/")
-async def read_root():
+async def root():
     return {"message": "Welcome to AfyaChecker API"}
