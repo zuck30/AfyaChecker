@@ -8,8 +8,8 @@ app = FastAPI()
 
 # CORS setup for Netlify frontend
 origins = [
-    "https://afyachecker.netlify.app/", 
-    "http://localhost:3000",  
+    "https://afyachecker.netlify.app",  # Replace with your actual Netlify URL
+    "http://localhost:3000",  # For local testing
     "*"
 ]
 app.add_middleware(
@@ -38,6 +38,14 @@ def sanitize_symptoms(symptoms: str) -> str:
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
+        # Validate input
+        if not request.symptoms.strip():
+            return {
+                "error": "Hitilafu: Maelezo ya dalili hayapo. Tafadhali weka dalili.",
+                "details": "Symptoms field is empty or invalid.",
+                "input_symptoms": request.symptoms
+            }
+
         # Sanitize symptoms
         sanitized_symptoms = sanitize_symptoms(request.symptoms)
 
@@ -52,7 +60,7 @@ async def analyze_symptoms(request: SymptomRequest):
 
         # Generate response with Groq
         chat_completion = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",  # Free, strong model
+            model="llama-3.1-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a helpful health information assistant providing general, non-medical advice."},
                 {"role": "user", "content": prompt}
@@ -65,11 +73,20 @@ async def analyze_symptoms(request: SymptomRequest):
         return {"analysis": analysis}
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "details": "An unexpected error occurred. Check API key or input.",
-            "input_symptoms": request.symptoms
+        error_details = {
+            "error": "Hitilafu imetokea. Tafadhali jaribu tena.",
+            "details": str(e),
+            "input_symptoms": request.symptoms,
+            "sanitized_input": sanitize_symptoms(request.symptoms)
         }
+        # Add specific Groq error context
+        if "authentication" in str(e).lower():
+            error_details["hint"] = "Invalid or missing GROQ_API_KEY. Check Render environment variables."
+        elif "rate limit" in str(e).lower():
+            error_details["hint"] = "Groq rate limit reached. Wait 1-2 minutes and retry."
+        elif "connection" in str(e).lower():
+            error_details["hint"] = "Network issue connecting to Groq. Check Render or Groq status."
+        return error_details
 
 @app.get("/")
 async def root():
