@@ -26,9 +26,9 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        # Initialize model with safety settings relaxed for medical content
+        # Initialize model with updated name and safety settings relaxed for medical content
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",  # Use stable gemini-1.5-flash
+            model_name="gemini-2.5-flash",  # Updated to current stable model
             generation_config=genai.types.GenerationConfig(
                 max_output_tokens=200,
                 temperature=0.7,
