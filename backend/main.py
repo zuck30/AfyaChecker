@@ -3,9 +3,11 @@ from pydantic import BaseModel
 import google.generativeai as genai
 import os
 from fastapi.middleware.cors import CORSMiddleware
-app = FastAPI()
-origins = ["*"]
 
+app = FastAPI()
+
+# CORS setup
+origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -13,6 +15,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Configure Google API key
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 class SymptomRequest(BaseModel):
@@ -22,23 +26,61 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
+        # Initialize model with safety settings relaxed for medical content
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=f"You are AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. Analyze symptoms in {request.language}, provide possible diagnosis and Tanzania-specific advice (e.g., local diseases, clinics). Disclaimer: Not medical advice.",
+            model_name="gemini-1.5-flash",  # Use stable gemini-1.5-flash
             generation_config=genai.types.GenerationConfig(
                 max_output_tokens=200,
                 temperature=0.7,
-            )
+            ),
+            safety_settings={
+                genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
+                genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
+                genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
+                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,  # Allow medical content
+            }
         )
-        response = model.generate_content(request.symptoms)
+
+        # Construct prompt dynamically
+        prompt = (
+            f"You are AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. "
+            f"Analyze the following symptoms in {request.language}, provide a possible diagnosis, "
+            f"and Tanzania-specific advice (e.g., local diseases like malaria, clinics like Aga Khan Hospital). "
+            f"Disclaimer: This is not medical advice; consult a doctor. Symptoms: {request.symptoms}"
+        )
+
+        # Generate response
+        response = model.generate_content(prompt)
+
+        # Check for safety block
+        if response.candidates and response.candidates[0].finish_reason == genai.types.FinishReason.SAFETY:
+            return {
+                "error": "Response blocked due to safety filters. Please rephrase symptoms or try again.",
+                "details": response.candidates[0].safety_ratings
+            }
+
+        # Extract text safely
+        if not response.text:
+            return {"error": "No valid response content returned. Try different symptoms."}
+        
         analysis = response.text.strip()
         return {"analysis": analysis}
+
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": str(e), "details": "An unexpected error occurred. Check API key or input."}
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to AfyaChecker API. Powered by Gemini"}
+
+# Optional: List available models for debugging
+@app.get("/models")
+async def list_models():
+    try:
+        models = genai.list_models()
+        return {"available_models": [m.name for m in models if 'generateContent' in m.supported_generation_methods]}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # from fastapi import FastAPI
