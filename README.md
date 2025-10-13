@@ -54,7 +54,7 @@ This project is a web application that allows users to enter health symptoms in 
     ```
 3.  Set your OpenAI API key as an environment variable:
     ```bash
-    export OPENAI_API_KEY='your_openai_api_key'
+    export GROQ_API_KEY='your_GROQ_API_KEY'
     ```
 4.  Run the backend server:
     ```bash
