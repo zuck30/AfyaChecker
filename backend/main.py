@@ -9,7 +9,7 @@ app = FastAPI()
 # CORS setup for Netlify frontend
 origins = [
     "https://afyachecker.netlify.app",  
-    "http://localhost:3000", 
+    "http://localhost:3000",
     "*"
 ]
 app.add_middleware(
@@ -65,11 +65,14 @@ async def analyze_symptoms(request: SymptomRequest):
                 {"role": "system", "content": "You are a helpful health information assistant providing general, non-medical advice."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=200,
+            max_tokens=300,  # Increased to avoid truncation
             temperature=0.7,
         )
 
         analysis = chat_completion.choices[0].message.content.strip()
+        # Check for truncation
+        if chat_completion.usage.completion_tokens >= 300:
+            analysis += "\n\n[Response truncated; try again or reduce input length.]"
         return {"analysis": analysis}
 
     except Exception as e:
