@@ -23,7 +23,7 @@ class SymptomRequest(BaseModel):
 async def analyze_symptoms(request: SymptomRequest):
     try:
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-pro-exp-03-25",
+            model_name="gemini-2.5-flash",
             system_instruction=f"You are AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. Analyze symptoms in {request.language}, provide possible diagnosis and Tanzania-specific advice (e.g., local diseases, clinics). Disclaimer: Not medical advice.",
             generation_config=genai.types.GenerationConfig(
                 max_output_tokens=200,
