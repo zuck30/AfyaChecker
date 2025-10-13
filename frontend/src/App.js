@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSend, FiUser, FiGlobe, FiTrash2, FiMenu, FiX, FiCopy, FiCheck, FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw, FiHeart, FiAlertTriangle, FiCheckCircle, FiPlus, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
-import { IoMdFlash } from 'react-icons/io';
+import { FiSend, FiUser, FiGlobe, FiTrash2, FiX, FiCopy, FiCheck, FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw, FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import './App.css';
 import Logo from './images/purple.png';
 
@@ -9,7 +8,6 @@ function App() {
   const [language, setLanguage] = useState('Swahili');
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,11 +47,9 @@ function App() {
 
   const handleAnalyze = async () => {
     if (!symptoms.trim()) {
-      setError(language === 'Swahili' ? 'Tafadhali weka dalili.' : 'Please enter symptoms.');
       return;
     }
     
-    setError('');
     setLoading(true);
     
     const userMessage = {
@@ -131,7 +127,6 @@ function App() {
 
   const handleQuickPrompt = (prompt) => {
     setSymptoms(language === 'Swahili' ? prompt.sw : prompt.en);
-    setError('');
     textareaRef.current?.focus();
   };
 
@@ -141,7 +136,6 @@ function App() {
       handleAnalyze();
     } else if (e.key === 'Escape') {
       setSymptoms('');
-      setError('');
     }
   };
 
@@ -151,7 +145,6 @@ function App() {
     setFavorites([]);
     localStorage.removeItem('chatFavorites');
     setShowClearModal(false);
-    setError('');
   };
 
   const copyToClipboard = async (text, messageId) => {
@@ -167,7 +160,6 @@ function App() {
   const newChat = () => {
     setChatHistory([]);
     setSymptoms('');
-    setError('');
     setSidebarOpen(false);
   };
 
