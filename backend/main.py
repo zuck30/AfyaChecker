@@ -5,9 +5,11 @@ import os
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
-
-# CORS setup
-origins = ["*"]
+origins = [
+    "https://afyaai.netlify.app", 
+    "http://localhost:3000",  
+    "*"
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -26,7 +28,7 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-
+        # Initialize model with stable name and safety settings for medical content
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash", 
             generation_config=genai.types.GenerationConfig(
@@ -37,15 +39,15 @@ async def analyze_symptoms(request: SymptomRequest):
                 genai.types.HarmCategory.HARM_CATEGORY_HARASSMENT: genai.types.HarmBlockThreshold.BLOCK_NONE,
                 genai.types.HarmCategory.HARM_CATEGORY_HATE_SPEECH: genai.types.HarmBlockThreshold.BLOCK_NONE,
                 genai.types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: genai.types.HarmBlockThreshold.BLOCK_NONE,
-                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,  # Allow medical content
+                genai.types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: genai.types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
             }
         )
 
         # Construct prompt dynamically
         prompt = (
-            f"Your name is AfyaAi or AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. "
+            f"You are AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. "
             f"Analyze the following symptoms in {request.language}, provide a possible diagnosis, "
-            f"and Tanzania specific advices. "
+            f"and Tanzania specific advice."
             f"Disclaimer: This is not medical advice; consult a doctor. Symptoms: {request.symptoms}"
         )
 
@@ -53,15 +55,18 @@ async def analyze_symptoms(request: SymptomRequest):
         response = model.generate_content(prompt)
 
         # Check for safety block
-        if response.candidates and response.candidates[0].finish_reason == genai.types.FinishReason.SAFETY:
+        if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason is not None:
             return {
                 "error": "Response blocked due to safety filters. Please rephrase symptoms or try again.",
-                "details": response.candidates[0].safety_ratings
+                "details": str(response.prompt_feedback)
             }
 
         # Extract text safely
-        if not response.text:
-            return {"error": "No valid response content returned. Try different symptoms."}
+        if not hasattr(response, 'text') or not response.text:
+            return {
+                "error": "No valid response content returned. Try different symptoms.",
+                "details": "Response may have been blocked or empty."
+            }
         
         analysis = response.text.strip()
         return {"analysis": analysis}
@@ -73,7 +78,7 @@ async def analyze_symptoms(request: SymptomRequest):
 async def root():
     return {"message": "Welcome to AfyaChecker API. Powered by Gemini"}
 
-# Optional: List available models for debugging
+# Debug endpoint to list models
 @app.get("/models")
 async def list_models():
     try:
