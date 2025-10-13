@@ -26,9 +26,9 @@ class SymptomRequest(BaseModel):
 @app.post("/analyze")
 async def analyze_symptoms(request: SymptomRequest):
     try:
-        # Initialize model with updated name and safety settings relaxed for medical content
+
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",  # Updated to current stable model
+            model_name="gemini-2.5-flash", 
             generation_config=genai.types.GenerationConfig(
                 max_output_tokens=200,
                 temperature=0.7,
@@ -43,9 +43,9 @@ async def analyze_symptoms(request: SymptomRequest):
 
         # Construct prompt dynamically
         prompt = (
-            f"You are AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. "
+            f"Your name is AfyaAi or AfyaChecker, a friendly, funny, and compassionate Health AI Assistant. "
             f"Analyze the following symptoms in {request.language}, provide a possible diagnosis, "
-            f"and Tanzania-specific advice (e.g., local diseases like malaria, clinics like Aga Khan Hospital). "
+            f"and Tanzania specific advices. "
             f"Disclaimer: This is not medical advice; consult a doctor. Symptoms: {request.symptoms}"
         )
 
