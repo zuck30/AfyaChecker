@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSend, FiUser, FiGlobe, FiTrash2, FiMenu, FiX, FiCopy, FiCheck, FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw, FiHeart, FiAlertTriangle, FiCheckCircle, FiPlus, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
-import { IoMdFlash } from 'react-icons/io';
+import { FiSend, FiUser, FiGlobe, FiTrash2, FiX, FiCopy, FiCheck, FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw, FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 import './App.css';
 import Logo from './images/purple.png';
 
