@@ -15,7 +15,7 @@ The backend is a Python FastAPI application and needs to be deployed to a servic
 
 When deploying the backend, you will need to set the following environment variable:
 
-*   `OPENAI_API_KEY`: Your API key for the OpenAI service.
+*   `GROQ_API_KEY`: Your API key for the OpenAI service.
 
 ## Frontend Deployment (React)
 
