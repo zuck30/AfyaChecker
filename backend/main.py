@@ -2,8 +2,19 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import openai
 import os
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # here is OPENAI_API_KEY environment variable
 openai.api_key = os.getenv("OPENAI_API_KEY")
