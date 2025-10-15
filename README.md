@@ -9,7 +9,9 @@ This project is a web application that allows users to enter health symptoms in 
 ![afyachecker](https://img.shields.io/badge/React-18.2.0-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.68.0-green) ![OpenAI API](https://img.shields.io/badge/OpenAI-API-brightgreen)
 
 
-
+<br>
+<a href="https://github.com/zuck30"> <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2t1czJ6MmRocnJ4aDU4YTRldWduMXRyZXZoeGx1MW1mMTJ4NWY2dSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ezUUZNLBUA9TpRSuBu/giphy.gif" width="40%" align="right" style="border-radius:10px; animation: float 6s ease-in-out infinite;" alt="Coding GIF">
+  </a>
 
 
 <h2 id=lang>Tech Stack</h2>
