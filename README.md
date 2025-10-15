@@ -10,7 +10,7 @@ This project is a web application that allows users to enter health symptoms in 
 
 
 <br>
-<a href="https://github.com/zuck30"> <img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExb2t1czJ6MmRocnJ4aDU4YTRldWduMXRyZXZoeGx1MW1mMTJ4NWY2dSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ezUUZNLBUA9TpRSuBu/giphy.gif" width="40%" align="right" style="border-radius:10px; animation: float 6s ease-in-out infinite;" alt="Coding GIF">
+<a href="https://github.com/zuck30"> <img src="https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExbGpzbGM1ZXh4Y2VteWYza3NhbXoxamF0eWRnNnM4bHR0b3hiOWZmdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/hSLA7QcIpsWcGeGqRi/giphy.gif" width="40%" align="right" style="border-radius:10px; animation: float 6s ease-in-out infinite;" alt="Coding GIF">
   </a>
 
 
