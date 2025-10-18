@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  FiSend, FiUser, FiGlobe, FiTrash2, FiX, FiCopy, FiCheck,
-  FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw,
-  FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft, FiMic, FiSpeaker,
-  FiSun, FiMoon, FiFileText, FiUpload, FiFile, FiClock, FiThumbsUp, FiRotateCw,
-  FiMenu, FiHome, FiHeart, FiAlertCircle, FiBook, FiBookmark, FiArchive,
-  FiBell, FiCalendar, FiBarChart2, FiSettings, FiLogOut, FiAward
+  FiSend, FiUser, FiGlobe, FiX, FiCopy, FiCheck,
+  FiMessageSquare, FiSearch, FiStar, FiShare2, FiRotateCcw,
+  FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft, FiMic, FiSpeaker, FiUpload, FiFile, FiClock, FiThumbsUp, FiRotateCw,
+  FiMenu, FiHeart, FiAlertCircle, FiBook, FiBookmark, FiAward
 } from 'react-icons/fi';
 import { 
   MdLocalHospital, 
@@ -14,7 +12,7 @@ import {
   MdPsychology
 } from 'react-icons/md';
 import './App.css';
-import Logo from './images/purple.png';
+import Logo from './images/logo.png';
 
 // Basic language detection
 const swahiliKeywords = ['homa','maumivu','kichochozi','kikohozi','siku','kufanya','suala','mimba','kutoa','jasiri','sio'];
