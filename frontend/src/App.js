@@ -1,9 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSend, FiUser, FiGlobe, FiTrash2, FiX, FiCopy, FiCheck, FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw, FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import {
+  FiSend, FiUser, FiGlobe, FiTrash2, FiX, FiCopy, FiCheck,
+  FiMessageSquare, FiDownload, FiSearch, FiStar, FiShare2, FiRotateCcw,
+  FiAlertTriangle, FiPlus, FiChevronRight, FiChevronLeft, FiMic, FiSpeaker,
+  FiSun, FiMoon, FiFileText, FiUpload, FiFile, FiClock, FiThumbsUp, FiRotateCw,
+  FiMenu, FiHome, FiHeart, FiAlertCircle, FiBook, FiBookmark, FiArchive,
+  FiBell, FiCalendar, FiBarChart2, FiSettings, FiLogOut, FiAward
+} from 'react-icons/fi';
+import { 
+  MdLocalHospital, 
+  MdEmergency,
+  MdSick,
+  MdPsychology
+} from 'react-icons/md';
 import './App.css';
 import Logo from './images/purple.png';
 
-function App() {
+// Basic language detection
+const swahiliKeywords = ['homa','maumivu','kichochozi','kikohozi','siku','kufanya','suala','mimba','kutoa','jasiri','sio'];
+
+function detectLanguage(text) {
+  if (!text) return 'English';
+  const t = text.toLowerCase();
+  let scoreSw = 0;
+  for (const k of swahiliKeywords) if (t.includes(k)) scoreSw++;
+  return scoreSw >= 1 ? 'Swahili' : 'English';
+}
+
+function getFollowUpSuggestions(message) {
+  return [
+    { id: 'duration', textEn: 'How long have the symptoms lasted?', textSw: 'Dalili zimeanza lini?' },
+    { id: 'severity', textEn: 'How severe are the symptoms (mild/moderate/severe)?', textSw: 'Je, dalili ni za kiwango gani (nyepesi/kati/mbaya)?' },
+    { id: 'meds', textEn: 'Are you taking any medication currently?', textSw: 'Una dawa yoyote unayeyatumia sasa?' },
+  ];
+}
+
+export default function App() {
+  // Core state
   const [symptoms, setSymptoms] = useState('');
   const [language, setLanguage] = useState('Swahili');
   const [chatHistory, setChatHistory] = useState([]);
@@ -13,120 +46,155 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showClearModal, setShowClearModal] = useState(false);
   const [favorites, setFavorites] = useState([]);
+  const [isListening, setIsListening] = useState(false);
+  const [attachedFile, setAttachedFile] = useState(null);
+  const [ratingMap, setRatingMap] = useState({});
+  const [lastBotId, setLastBotId] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeView, setActiveView] = useState('chat');
+  const [pinnedChats, setPinnedChats] = useState([]);
+  const [medicalProfile, setMedicalProfile] = useState({
+    name: '',
+    age: '',
+    bloodType: '',
+    allergies: '',
+    medications: '',
+    conditions: ''
+  });
+  
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
 
+  // Quick prompts and templates
   const quickPrompts = [
-    { en: 'Fever and cough for 3 days', sw: 'Homa na kikohozi kwa siku 3' },
-    { en: 'Headache and fatigue', sw: 'Maumivu ya kichwa na uchovu' },
-    { en: 'Sore throat and fever', sw: 'Koo linawasha na homa' },
-    { en: 'Stomach pain and nausea', sw: 'Maumivu ya tumbo na kichefuchefu' },
-    { en: 'Chest pain and shortness of breath', sw: 'Maumivu ya kifua na kupumua kwa shida' },
-    { en: 'Skin rash and itching', sw: 'Upele na kuwashwa ngozi' },
+    { en: 'Fever and cough for 3 days', sw: 'Homa na kikohozi kwa siku 3', category: 'respiratory', priority: 'routine' },
+    { en: 'Headache and fatigue', sw: 'Maumivu ya kichwa na uchovu', category: 'neurological', priority: 'routine' },
+    { en: 'Sore throat and fever', sw: 'Koo linawasha na homa', category: 'respiratory', priority: 'urgent' },
+    { en: 'Stomach pain and nausea', sw: 'Maumivu ya tumbo na kichefuchefu', category: 'digestive', priority: 'routine' },
   ];
 
-  // Load history and favorites from localStorage on component mount
+  const symptomChecklists = [
+    {
+      title: 'Common Cold Symptoms',
+      symptoms: ['Runny nose', 'Sneezing', 'Sore throat', 'Cough', 'Mild fever']
+    },
+    {
+      title: 'Flu Symptoms', 
+      symptoms: ['High fever', 'Body aches', 'Fatigue', 'Dry cough', 'Headache']
+    }
+  ];
+
+  const emergencyProtocols = [
+    { name: 'Heart Attack', number: '911', steps: ['Call emergency', 'Chew aspirin', 'Stay calm'] },
+    { name: 'Severe Bleeding', number: '911', steps: ['Apply pressure', 'Elevate injury', 'Call emergency'] },
+    { name: 'Difficulty Breathing', number: '911', steps: ['Call emergency', 'Stay upright', 'Loosen clothing'] }
+  ];
+
+  // Check mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Load data from localStorage
   useEffect(() => {
     const savedHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
     const savedFavorites = JSON.parse(localStorage.getItem('chatFavorites')) || [];
+    const savedRating = JSON.parse(localStorage.getItem('chatRatings')) || {};
+    const savedPinned = JSON.parse(localStorage.getItem('pinnedChats')) || [];
+    const savedProfile = JSON.parse(localStorage.getItem('medicalProfile')) || {};
     
-    // Ensure all history items have required properties
-    const validatedHistory = savedHistory.map(item => ({
-      id: item.id || Date.now() + Math.random(),
-      type: item.type || 'user',
-      content: item.content || '',
-      timestamp: item.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      fullTimestamp: item.fullTimestamp || new Date().toLocaleString(),
-      language: item.language || 'Swahili',
-      isFavorite: item.isFavorite || false
-    }));
-    
-    setChatHistory(validatedHistory);
+    setChatHistory(savedHistory);
     setFavorites(savedFavorites);
+    setRatingMap(savedRating);
+    setPinnedChats(savedPinned);
+    setMedicalProfile(savedProfile);
   }, []);
 
-  const handleAnalyze = async () => {
-    if (!symptoms.trim()) {
-      return;
-    }
-    
-    setLoading(true);
-    
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: symptoms,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      fullTimestamp: new Date().toLocaleString(),
-      language,
-      isFavorite: false
-    };
-    
-    const updatedHistory = [...chatHistory, userMessage];
-    setChatHistory(updatedHistory);
-    
-    const currentSymptoms = symptoms;
-    setSymptoms('');
+  useEffect(() => {
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+  }, [chatHistory]);
 
-    try {
+  useEffect(() => {
+    localStorage.setItem('chatFavorites', JSON.stringify(favorites));
+  }, [favorites]);
 
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      const response = await fetch(`${apiUrl}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ symptoms: currentSymptoms, language }),
-      });
-      
-      let analysisText;
-      if (response.ok) {
-        const data = await response.json();
-        analysisText = data.analysis || data.error;
-      } else {
-        throw new Error('API request failed');
-      }
+  useEffect(() => {
+    localStorage.setItem('chatRatings', JSON.stringify(ratingMap));
+  }, [ratingMap]);
 
-      // If no analysis from API, provide a better default response
-      if (!analysisText || analysisText.includes('Hakuna uchambuzi') || analysisText.includes('No analysis')) {
-        analysisText = language === 'Swahili' 
-          ? `Nimeelewa dalili zako: "${currentSymptoms}". Kwa sasa, ninaomba ueleze zaidi kuhusu hali yako ili nikupe ushauri sahihi zaidi. Unaweza pia kushiriki:\n\n• Muda umekuwa na dalili hizi\n• Ukali wa dalili\n• Dalili zingine unazohisi\n\nKumbuka: Huu ni ushauri wa awali tu. Kwa matibabu kamili, tafadhali wasiliana na mtaalamu wa afya.`
-          : `I understand your symptoms: "${currentSymptoms}". Currently, I need more details about your condition to provide better advice. You can also share:\n\n• How long you've had these symptoms\n• Severity of symptoms\n• Any other symptoms you're experiencing\n\nRemember: This is preliminary advice only. For complete medical care, please consult a healthcare professional.`;
-      }
+  useEffect(() => {
+    localStorage.setItem('pinnedChats', JSON.stringify(pinnedChats));
+  }, [pinnedChats]);
 
-      const botMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        content: analysisText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        fullTimestamp: new Date().toLocaleString(),
-        language
+  useEffect(() => {
+    localStorage.setItem('medicalProfile', JSON.stringify(medicalProfile));
+  }, [medicalProfile]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory, loading]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const rec = new SpeechRecognition();
+      rec.lang = 'en-US';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        setSymptoms(prev => (prev ? prev + ' ' + text : text));
       };
-      
-      const finalHistory = [...updatedHistory, botMessage];
-      setChatHistory(finalHistory);
-      localStorage.setItem('chatHistory', JSON.stringify(finalHistory));
-    } catch (error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: 'error',
-        content: language === 'Swahili' ? 
-          'Hitilafu imetokea. Tafadhali jaribu tena.' : 
-          'An error occurred. Please try again.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        fullTimestamp: new Date().toLocaleString(),
-        language
-      };
-      
-      const finalHistory = [...updatedHistory, errorMessage];
-      setChatHistory(finalHistory);
-      localStorage.setItem('chatHistory', JSON.stringify(finalHistory));
+      rec.onend = () => setIsListening(false);
+      recognitionRef.current = rec;
     }
-    setLoading(false);
+  }, []);
+
+  // Helper functions
+  const pushMessage = (msg) => {
+    setChatHistory(prev => [...prev, msg]);
   };
 
-  const handleQuickPrompt = (prompt) => {
-    setSymptoms(language === 'Swahili' ? prompt.sw : prompt.en);
+  const safeTimestamp = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const copyToClipboard = async (text, messageId) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (err) {
+      console.error('copy failed', err);
+    }
+  };
+
+  const toggleFavorite = (id, e) => {
+    e?.stopPropagation();
+    const updatedHistory = chatHistory.map(item => item.id === id ? { ...item, isFavorite: !item.isFavorite } : item);
+    setChatHistory(updatedHistory);
+    const updatedFavorites = updatedHistory.filter(i => i.isFavorite);
+    setFavorites(updatedFavorites);
+  };
+
+  const togglePin = (id, e) => {
+    e?.stopPropagation();
+    setPinnedChats(prev => 
+      prev.includes(id) 
+        ? prev.filter(pid => pid !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleQuickPrompt = (promptObj) => {
+    const txt = language === 'Swahili' ? promptObj.sw : promptObj.en;
+    setSymptoms(txt);
     textareaRef.current?.focus();
   };
 
@@ -139,6 +207,155 @@ function App() {
     }
   };
 
+  const regenerateResponse = () => {
+    const lastUser = [...chatHistory].reverse().find(m => m.type === 'user');
+    if (lastUser) {
+      setSymptoms(lastUser.content);
+      setTimeout(() => handleAnalyze(true, lastUser.content), 50);
+    }
+  };
+
+  const rateMessage = (id, rating) => {
+    setRatingMap(prev => ({ ...prev, [id]: rating }));
+  };
+
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setAttachedFile(f);
+    }
+  };
+
+  const exportAsPDF = () => {
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+    const title = language === 'Swahili' ? 'AfyaChecker - Maongezi' : 'AfyaChecker - Chat';
+    const html = `
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color:#111; }
+            .msg { margin-bottom: 16px; padding:12px; border-radius:8px; }
+            .user { background: #e9e7e2; text-align:right; }
+            .bot { background: #eaf2ff; text-align:left; }
+            .meta { font-size:12px; color:#555; margin-bottom:8px; }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          ${chatHistory.map(m => `
+            <div class="msg ${m.type}">
+              <div class="meta"><strong>${m.type === 'user' ? (language === 'Swahili'?'Wewe':'You') : (language === 'Swahili'?'Msaidizi wa Afya':'Health Assistant')}</strong> • ${m.timestamp || ''}</div>
+              <div>${(m.content || '').replace(/\n/g, '<br/>')}</div>
+            </div>
+          `).join('')}
+        </body>
+      </html>
+    `;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 600);
+  };
+
+  const handleExportHistory = () => {
+    const dataStr = JSON.stringify(chatHistory, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'afya_checker_chat.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const shareChat = () => {
+    const latestUser = [...chatHistory].reverse().find(m => m.type === 'user');
+    const latestBot = [...chatHistory].reverse().find(m => m.type === 'bot');
+    const text = `${latestUser?.content || ''}\n\n${latestBot?.content || ''}`;
+    if (navigator.share) {
+      navigator.share({
+        title: 'AfyaChecker Chat',
+        text,
+        url: window.location.href
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text);
+      setCopiedMessageId('share');
+      setTimeout(() => setCopiedMessageId(null), 1800);
+    }
+  };
+
+  const handleAnalyze = async (isRegenerate = false, overrideSymptoms = null) => {
+    const textToSend = overrideSymptoms ?? symptoms?.trim();
+    if (!textToSend) return;
+    setLoading(true);
+
+    const userMsg = {
+      id: Date.now(),
+      type: 'user',
+      content: textToSend,
+      timestamp: safeTimestamp(),
+      fullTimestamp: new Date().toLocaleString(),
+      language,
+      isFavorite: false,
+      attachments: attachedFile ? { name: attachedFile.name, size: attachedFile.size } : null
+    };
+    pushMessage(userMsg);
+    setSymptoms('');
+    setAttachedFile(null);
+
+    const placeholder = {
+      id: Date.now() + 1,
+      type: 'bot',
+      content: language === 'Swahili' ? 'Nafungua uchambuzi...' : 'Analyzing...',
+      timestamp: safeTimestamp(),
+      fullTimestamp: new Date().toLocaleString(),
+      language
+    };
+    pushMessage(placeholder);
+
+    const apiUrl = process.env.REACT_APP_API_URL || '';
+    try {
+      if (apiUrl) {
+        const resp = await fetch(`${apiUrl}/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symptoms: textToSend, language })
+        });
+        if (!resp.ok) throw new Error('API failed');
+        const data = await resp.json();
+        const analysis = data.analysis || data.error || (language === 'Swahili' ? 'Hakuna uchambuzi kutoka kwa seva.' : 'No analysis from server.');
+        setChatHistory(prev => {
+          const replaced = prev.map(p => p.id === placeholder.id ? { ...p, content: analysis } : p);
+          return replaced;
+        });
+        setLastBotId(placeholder.id);
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn('analyze API failed', err);
+    }
+
+    const fallback = language === 'Swahili'
+      ? `Nimepokea dalili zako: "${textToSend}". Tafadhali taja:\n• Ni lini zilianza\n• Je, zimeongezeka au kupungua\n• Dawa unayochukua\n\nHii ni ushauri wa awali tu. Tafadhali wasiliana na daktari kwa uchunguzi wa kliniki.`
+      : `I received your symptoms: "${textToSend}". Please share:\n• When they started\n• How they changed over time\n• Any medication you're taking\n\nThis is preliminary advice only. See a doctor for clinical assessment.`;
+
+    setChatHistory(prev => prev.map(p => p.id === placeholder.id ? { ...p, content: fallback } : p));
+    setLastBotId(placeholder.id);
+    setLoading(false);
+  };
+
+  const suggestionsForLastBot = () => {
+    const lastBot = [...chatHistory].reverse().find(m => m.type === 'bot');
+    if (!lastBot) return [];
+    return getFollowUpSuggestions(lastBot.content);
+  };
+
   const clearChat = () => {
     setChatHistory([]);
     localStorage.removeItem('chatHistory');
@@ -147,445 +364,635 @@ function App() {
     setShowClearModal(false);
   };
 
-  const copyToClipboard = async (text, messageId) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedMessageId(messageId);
-      setTimeout(() => setCopiedMessageId(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
-
   const newChat = () => {
     setChatHistory([]);
     setSymptoms('');
     setSidebarOpen(false);
-  };
-
-  const toggleFavorite = (id, e) => {
-    e?.stopPropagation();
-    const updatedHistory = chatHistory.map(item => 
-      item.id === id ? { ...item, isFavorite: !item.isFavorite } : item
-    );
-    setChatHistory(updatedHistory);
-    localStorage.setItem('chatHistory', JSON.stringify(updatedHistory));
-    
-    const updatedFavorites = updatedHistory.filter(item => item.isFavorite);
-    setFavorites(updatedFavorites);
-    localStorage.setItem('chatFavorites', JSON.stringify(updatedFavorites));
-  };
-
-  const handleExportHistory = () => {
-    const dataStr = JSON.stringify(chatHistory, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'health_assistant_history.json';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const shareChat = () => {
-    const latestUserMessage = chatHistory.find(msg => msg.type === 'user');
-    const latestBotMessage = chatHistory.find(msg => msg.type === 'bot');
-    
-    if (navigator.share) {
-      navigator.share({
-        title: 'Health Assistant Chat',
-        text: `${latestUserMessage?.content || ''}\n\n${latestBotMessage?.content || ''}`,
-        url: window.location.href,
-      });
-    } else {
-      const text = `${language === 'Swahili' ? 'Msaidizi wa Afya' : 'Health Assistant'}\n\n${latestUserMessage?.content || ''}\n\n${latestBotMessage?.content || ''}`;
-      navigator.clipboard.writeText(text);
-      setCopiedMessageId('share');
-      setTimeout(() => setCopiedMessageId(null), 2000);
-    }
-  };
-
-  const regenerateResponse = () => {
-    const lastUserMessage = chatHistory.find(msg => msg.type === 'user');
-    if (lastUserMessage) {
-      setSymptoms(lastUserMessage.content);
-      setTimeout(() => handleAnalyze(), 100);
-    }
+    setAttachedFile(null);
+    setActiveView('chat');
   };
 
   const handleHistoryClick = (item) => {
     if (item.type === 'user') {
       setSymptoms(item.content);
+      textareaRef.current?.focus();
     }
     setSidebarOpen(false);
+    setActiveView('chat');
   };
 
-  // Safe filtering functions
-  const filteredHistory = chatHistory.filter(item => {
-    if (!item || typeof item.content !== 'string') return false;
-    return item.content.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const updateMedicalProfile = (field, value) => {
+    setMedicalProfile(prev => ({ ...prev, [field]: value }));
+  };
 
-  const filteredFavorites = favorites.filter(item => {
-    if (!item || typeof item.content !== 'string') return false;
-    return item.content.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredHistory = chatHistory.filter(item => (item.content || '').toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredFavorites = favorites.filter(item => (item.content || '').toLowerCase().includes(searchQuery.toLowerCase()));
+  const pinnedChatItems = chatHistory.filter(item => pinnedChats.includes(item.id));
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, loading]);
+  // Voice: TTS
+  const speakText = (text) => {
+    if (!text || !('speechSynthesis' in window)) return;
+    const utter = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const v = voices.find(v => v.lang.startsWith(language === 'Swahili' ? 'sw' : 'en')) || voices[0];
+    if (v) utter.voice = v;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utter);
+  };
 
-  const formatMessage = (content) => {
-    if (!content) return null;
-    return content.split('\n').map((line, index) => (
-      <p key={index} className="message-line">
-        {line}
-        {index < content.split('\n').length - 1 && <br />}
-      </p>
-    ));
+  // Voice: STT toggle
+  const toggleListen = () => {
+    const rec = recognitionRef.current;
+    if (!rec) {
+      alert(language === 'Swahili' ? 'Sio sampuli ya spishi inapatikana kwa kivinjari chako.' : 'Speech recognition not available in your browser.');
+      return;
+    }
+    if (isListening) {
+      rec.stop();
+      setIsListening(false);
+    } else {
+      rec.lang = language === 'Swahili' ? 'sw-KE' : 'en-US';
+      rec.start();
+      setIsListening(true);
+    }
+  };
+
+  // Mobile Bottom Navigation
+  const MobileNav = () => (
+    <div className="mobile-bottom-nav">
+      <button 
+        className="mobile-nav-btn"
+        onClick={() => setSidebarOpen(true)}
+      >
+        <FiMenu className="mobile-nav-icon" />
+        <span>{language === 'Swahili' ? 'Menyu' : 'Menu'}</span>
+      </button>
+      <button 
+        className="mobile-nav-btn"
+        onClick={newChat}
+      >
+        <FiPlus className="mobile-nav-icon" />
+        <span>{language === 'Swahili' ? 'Mpya' : 'New'}</span>
+      </button>
+      <button 
+        className="mobile-nav-btn"
+        onClick={() => { setSidebarOpen(true); setActiveView('favorites'); }}
+      >
+        <FiStar className="mobile-nav-icon" />
+        <span>{language === 'Swahili' ? 'Vipendwa' : 'Favorites'}</span>
+      </button>
+      <button 
+        className="mobile-nav-btn"
+        onClick={() => { setSidebarOpen(true); setActiveView('quick-actions'); }}
+      >
+        <FiAlertCircle className="mobile-nav-icon" />
+        <span>{language === 'Swahili' ? 'Haraka' : 'Quick'}</span>
+      </button>
+    </div>
+  );
+
+  // Render different sidebar views
+  const renderSidebarContent = () => {
+    switch (activeView) {
+      case 'favorites':
+        return (
+          <div className="sidebar-view">
+            <div className="view-header">
+              <FiStar />
+              <h3>{language === 'Swahili' ? 'Vipendwa' : 'Favorites'}</h3>
+            </div>
+            <div className="favorites-list">
+              {filteredFavorites.length ? filteredFavorites.map(f => (
+                <div key={f.id} className="favorite-item" onClick={() => handleHistoryClick(f)}>
+                  <div className="favorite-content">
+                    <p className="favorite-text">{(f.content || '').slice(0, 60)}...</p>
+                    <p className="favorite-timestamp">{f.timestamp}</p>
+                  </div>
+                </div>
+              )) : (
+                <p className="empty-state">{language === 'Swahili' ? 'Hakuna vipendwa.' : 'No favorites yet.'}</p>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'quick-actions':
+        return (
+          <div className="sidebar-view">
+            <div className="view-header">
+              <FiAlertCircle />
+              <h3>{language === 'Swahili' ? 'Vitendo vya Haraka' : 'Quick Actions'}</h3>
+            </div>
+            
+            <div className="quick-actions-grid">
+              <div className="action-card emergency">
+                <MdEmergency className="action-icon" />
+                <h4>{language === 'Swahili' ? 'Dharura' : 'Emergency'}</h4>
+                <p>{language === 'Swahili' ? 'Piga simu ya dharura' : 'Call emergency services'}</p>
+                <button className="action-btn" onClick={() => window.open('tel:911')}>
+                  911 / 112
+                </button>
+              </div>
+
+              <div className="action-card symptoms">
+                <FiHeart className="action-icon" />
+                <h4>{language === 'Swahili' ? 'Angalia Dalili' : 'Symptom Check'}</h4>
+                <p>{language === 'Swahili' ? 'Anza uchunguzi wa haraka' : 'Start quick assessment'}</p>
+              </div>
+
+              <div className="action-card history">
+                <FiBook className="action-icon" />
+                <h4>{language === 'Swahili' ? 'Historia ya Afya' : 'Health History'}</h4>
+                <p>{language === 'Swahili' ? 'Angalia rekodi zako' : 'View your records'}</p>
+              </div>
+            </div>
+
+            <div className="emergency-protocols">
+              <h4>{language === 'Swahili' ? 'Miongozo ya Dharura' : 'Emergency Protocols'}</h4>
+              {emergencyProtocols.map((protocol, index) => (
+                <div key={index} className="protocol-item">
+                  <strong>{protocol.name}</strong>
+                  <span className="protocol-number">{protocol.number}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'profile':
+        return (
+          <div className="sidebar-view">
+            <div className="view-header">
+              <FiUser />
+              <h3>{language === 'Swahili' ? 'Wasifu wa Afya' : 'Health Profile'}</h3>
+            </div>
+            
+            <div className="profile-form">
+              <div className="form-group">
+                <label>{language === 'Swahili' ? 'Jina' : 'Name'}</label>
+                <input
+                  type="text"
+                  value={medicalProfile.name}
+                  onChange={(e) => updateMedicalProfile('name', e.target.value)}
+                  placeholder={language === 'Swahili' ? 'Jina kamili' : 'Full name'}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>{language === 'Swahili' ? 'Umri' : 'Age'}</label>
+                <input
+                  type="number"
+                  value={medicalProfile.age}
+                  onChange={(e) => updateMedicalProfile('age', e.target.value)}
+                  placeholder={language === 'Swahili' ? 'Umri wako' : 'Your age'}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>{language === 'Swahili' ? 'Aina ya Damu' : 'Blood Type'}</label>
+                <select
+                  value={medicalProfile.bloodType}
+                  onChange={(e) => updateMedicalProfile('bloodType', e.target.value)}
+                >
+                  <option value="">{language === 'Swahili' ? 'Chagua...' : 'Select...'}</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>{language === 'Swahili' ? 'Mzio' : 'Allergies'}</label>
+                <input
+                  type="text"
+                  value={medicalProfile.allergies}
+                  onChange={(e) => updateMedicalProfile('allergies', e.target.value)}
+                  placeholder={language === 'Swahili' ? 'Mzio wowote' : 'Any allergies'}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>{language === 'Swahili' ? 'Dawa' : 'Medications'}</label>
+                <textarea
+                  value={medicalProfile.medications}
+                  onChange={(e) => updateMedicalProfile('medications', e.target.value)}
+                  placeholder={language === 'Swahili' ? 'Dawa unazochukua' : 'Current medications'}
+                  rows="3"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      default: // chat view
+        return (
+          <div className="sidebar-view">
+            <div className="view-header">
+              <FiMessageSquare />
+              <h3>{language === 'Swahili' ? 'Mazungumzo' : 'Chats'}</h3>
+            </div>
+
+            {/* Pinned Chats */}
+            {pinnedChatItems.length > 0 && (
+              <div className="section">
+                <h4 className="section-title">
+                  <FiBookmark />
+                  {language === 'Swahili' ? 'Imeunganishwa' : 'Pinned'}
+                </h4>
+                <div className="pinned-list">
+                  {pinnedChatItems.map(item => (
+                    <div key={item.id} className="pinned-item" onClick={() => handleHistoryClick(item)}>
+                      <div className="item-content">
+                        <p className="item-text">{(item.content || '').slice(0, 50)}...</p>
+                        <p className="item-timestamp">{item.timestamp}</p>
+                      </div>
+                      <button className="unpin-btn" onClick={(e) => togglePin(item.id, e)}>
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Access Templates */}
+            <div className="section">
+              <h4 className="section-title">
+                <FiAward />
+                {language === 'Swahili' ? 'Viwanja vya Haraka' : 'Quick Templates'}
+              </h4>
+              <div className="templates-grid">
+                {quickPrompts.map((prompt, index) => (
+                  <button
+                    key={index}
+                    className="template-card"
+                    onClick={() => handleQuickPrompt(prompt)}
+                  >
+                    <span className={`priority-badge ${prompt.priority}`}>{prompt.priority}</span>
+                    <span className="template-text">{language === 'Swahili' ? prompt.sw : prompt.en}</span>
+                    <span className="category-tag">{prompt.category}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent History */}
+            <div className="section">
+              <h4 className="section-title">
+                <FiClock />
+                {language === 'Swahili' ? 'Historia ya Hivi Karibuni' : 'Recent History'}
+              </h4>
+              <div className="search-container">
+                <FiSearch className="search-icon" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={language === 'Swahili' ? 'Tafuta historia...' : 'Search history...'}
+                  className="search-input"
+                />
+              </div>
+              <div className="history-list">
+                {filteredHistory.length ? filteredHistory.slice(0, 8).map(item => (
+                  <div key={item.id} className="history-item" onClick={() => handleHistoryClick(item)}>
+                    <div className="item-content">
+                      <p className="item-text">{(item.content || '').slice(0, 50)}...</p>
+                      <p className="item-timestamp">{item.timestamp}</p>
+                    </div>
+                    <div className="item-actions">
+                      <button className={`favorite-btn ${item.isFavorite ? 'favorited' : ''}`} onClick={(e) => toggleFavorite(item.id, e)}>
+                        <FiStar />
+                      </button>
+                      <button className={`pin-btn ${pinnedChats.includes(item.id) ? 'pinned' : ''}`} onClick={(e) => togglePin(item.id, e)}>
+                        <FiBookmark />
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <p className="empty-state">{language === 'Swahili' ? 'Hakuna historia.' : 'No history yet.'}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+    }
   };
 
   return (
     <div className="app-container">
-      {/* Pre-Sidebar (Collapsed Sidebar) */}
+      {/* Enhanced Pre Sidebar */}
       <div className="pre-sidebar">
-        <button 
-          className="new-chat-btn-pre"
-          onClick={newChat}
-          title={language === 'Swahili' ? 'Mazungumzo Mapya' : 'New Chat'}
-        >
-          <FiPlus className="new-chat-icon-pre" />
+        <button className="pre-sidebar-btn" onClick={newChat} title={language === 'Swahili' ? 'Mazungumzo Mapya' : 'New Chat'}>
+          <FiMessageSquare />
         </button>
         
+        <button 
+          className={`pre-sidebar-btn ${activeView === 'chat' ? 'active' : ''}`}
+          onClick={() => { setSidebarOpen(true); setActiveView('chat'); }}
+          title={language === 'Swahili' ? 'Mazungumzo' : 'Chats'}
+        >
+          <FiMenu />
+        </button>
+        
+        <button 
+          className={`pre-sidebar-btn ${activeView === 'favorites' ? 'active' : ''}`}
+          onClick={() => { setSidebarOpen(true); setActiveView('favorites'); }}
+          title={language === 'Swahili' ? 'Vipendwa' : 'Favorites'}
+        >
+          <FiStar />
+        </button>
+        
+        <button 
+          className={`pre-sidebar-btn ${activeView === 'quick-actions' ? 'active' : ''}`}
+          onClick={() => { setSidebarOpen(true); setActiveView('quick-actions'); }}
+          title={language === 'Swahili' ? 'Vitendo vya Haraka' : 'Quick Actions'}
+        >
+          <FiAlertCircle />
+        </button>
+        
+        <button 
+          className={`pre-sidebar-btn ${activeView === 'profile' ? 'active' : ''}`}
+          onClick={() => { setSidebarOpen(true); setActiveView('profile'); }}
+          title={language === 'Swahili' ? 'Wasifu Wangu' : 'My Profile'}
+        >
+          <FiUser />
+        </button>
+
         <div className="pre-sidebar-divider"></div>
         
-        <button
-          className="sidebar-toggle-pre"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          title={sidebarOpen ? 'Close Sidebar' : 'Open Sidebar'}
-        >
+        <button className="pre-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Close' : 'Open'}>
           {sidebarOpen ? <FiChevronLeft /> : <FiChevronRight />}
         </button>
       </div>
 
-      {/* Main Sidebar */}
-      <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo">
-            <img src={Logo} alt="Health AI" className="logo-icon" />
-            <span className="logo-text">AfyaChecker</span>
-          </div>
-          <button 
-            className="new-chat-btn-sidebar"
-            onClick={newChat}
-          >
-            <FiPlus className="new-chat-icon-sidebar" />
-            <span>{language === 'Swahili' ? 'Mazungumzo Mapya' : 'New Chat'}</span>
-          </button>
-        </div>
-
-        <div className="sidebar-content">
-          <div className="sidebar-section">
-            <h3 className="section-title">
-              <br></br>
-              {language === 'Swahili' ? ' Historia' : 'History'}
-            </h3>
-            <div className="search-container">
-              <FiSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder={language === 'Swahili' ? 'Tafuta historia...' : 'Search history...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="search-input"
-                aria-label="Search history"
-              />
+      {/* Enhanced Sidebar */}
+      {!isMobile && (
+        <div className={`desktop-sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+          <div className="sidebar-header">
+            <div className="sidebar-logo">
+              <img src={Logo} alt="AfyaChecker" className="logo-icon" />
+              <span className="logo-text">AfyaChecker</span>
             </div>
-            <div className="history-list">
-              {filteredHistory.length > 0 ? (
-                filteredHistory.slice(0, 10).map(item => (
-                  <div
-                    key={item.id}
-                    className="history-item"
-                    onClick={() => handleHistoryClick(item)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="history-content">
-                      <p className="history-text">{(item.content || '').substring(0, 50)}...</p>
-                      <p className="history-timestamp">{item.timestamp}</p>
-                    </div>
-                    <button
-                      onClick={(e) => toggleFavorite(item.id, e)}
-                      className={`favorite-btn ${item.isFavorite ? 'favorited' : ''}`}
-                      aria-label="Toggle favorite"
-                    >
-                      <FiStar className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="history-empty">
-                  {language === 'Swahili' ? 'Hakuna historia inayopatikana.' : 'No history available.'}
-                </p>
-              )}
-            </div>
+            <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>
+              <FiX />
+            </button>
           </div>
 
-          <div className="sidebar-section">
-            <h3 className="section-title">
-              {language === 'Swahili' ? 'Vipendwa' : 'Favorites'}
-            </h3>
-            <div className="favorites-list">
-              {filteredFavorites.length > 0 ? (
-                filteredFavorites.slice(0, 5).map(item => (
-                  <div
-                    key={item.id}
-                    className="favorite-item"
-                    onClick={() => handleHistoryClick(item)}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="favorite-content">
-                      <p className="favorite-text">{(item.content || '').substring(0, 50)}...</p>
-                      <p className="favorite-timestamp">{item.timestamp}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="favorites-empty">
-                  {language === 'Swahili' ? 'Hakuna vipendwa.' : 'No favorites yet.'}
-                </p>
-              )}
+          <div className="sidebar-content">
+            {renderSidebarContent()}
+          </div>
+
+          <div className="sidebar-footer">
+            <div className="language-switcher">
+              <FiGlobe className="globe-icon" />
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+                <option value="Swahili">Kiswahili</option>
+                <option value="English">English</option>
+              </select>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="sidebar-footer">
-          <div className="language-switcher">
-            <FiGlobe className="globe-icon" />
-            <select 
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="language-select"
+      {/* Mobile Sidebar */}
+      {isMobile && (
+        <div className={`mobile-sidebar ${sidebarOpen ? 'mobile-sidebar-open' : ''}`}>
+          <div className="mobile-sidebar-header">
+            <div className="sidebar-logo">
+              <img src={Logo} alt="AfyaChecker" className="logo-icon" />
+              <span className="logo-text">AfyaChecker</span>
+            </div>
+            <button 
+              className="mobile-sidebar-close"
+              onClick={() => setSidebarOpen(false)}
             >
-              <option value="Swahili">Kiswahili</option>
-              <option value="English">English</option>
-            </select>
+              <FiX />
+            </button>
           </div>
-          <div className="sidebar-actions">
-            <button onClick={handleExportHistory} className="sidebar-action-btn">
-              <FiDownload className="w-4 h-4" />
-              <span>{language === 'Swahili' ? 'Pakua' : 'Export'}</span>
-            </button>
-            <button onClick={() => setShowClearModal(true)} className="sidebar-action-btn">
-              <FiTrash2 className="w-4 h-4" />
-              <span>{language === 'Swahili' ? 'Futa' : 'Clear'}</span>
-            </button>
+
+          <div className="mobile-sidebar-content">
+            {renderSidebarContent()}
+          </div>
+
+          <div className="mobile-sidebar-footer">
+            <div className="language-switcher-mobile">
+              <FiGlobe />
+              <select 
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="Swahili">Kiswahili</option>
+                <option value="English">English</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Main Chat Area */}
-      <div className={`main-content ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        {/* Chat Messages */}
-        <div className="chat-messages">
+      {/* Main Content */}
+      <div className={`main-content ${isMobile ? 'mobile' : 'desktop'} ${sidebarOpen && !isMobile ? 'sidebar-open' : ''}`}>
+        {/* Desktop Header - Transparent */}
+        {!isMobile && (
+          <div className="top-bar">
+            <div className="top-left">
+              <img src={Logo} alt="logo" className="top-logo" />
+              <div className="app-title-block">
+                <div className="app-title">AfyaChecker</div>
+                <div className="app-sub">Clinical assistant • quick checks</div>
+              </div>
+            </div>
+
+            <div className="top-actions">
+              <button className="action" onClick={newChat} title="New chat"><FiPlus /></button>
+              <button className="action" onClick={shareChat} title="Share"><FiShare2 /></button>
+              <button className="action" onClick={regenerateResponse} title="Regenerate"><FiRotateCw /></button>
+            </div>
+          </div>
+        )}
+
+        {/* Chat messages */}
+        <section className="chat-messages">
           {chatHistory.length === 0 ? (
             <div className="welcome-container">
               <div className="welcome-header">
                 <div className="welcome-avatar">
-                  <img src={Logo} alt="AI" className="ai-avatar" />
+                  <img src={Logo} alt="ai" />
                 </div>
-                <h1 className="welcome-title">
-                  {language === 'Swahili' ? 'Karibu kwa AfyaChecker' : 'Welcome to AfyaChecker'}
-                </h1>
-                <p className="welcome-subtitle">
-                  {language === 'Swahili' ? 
-                    'Ninawezaje kukusaidia leo? Andika dalili zako au chagua moja ya mifano hapa chini.' :
-                    'How can I help you today? Describe your symptoms or choose from examples below.'}
-                </p>
+                <h1 className="welcome-title">{language === 'Swahili' ? 'Karibu AfyaChecker' : 'Welcome to AfyaChecker'}</h1>
+                <p className="welcome-subtitle">{language === 'Swahili' ? 'Eleza dalili zako au chagua mfano hapa chini.' : 'Describe your symptoms or choose an example below.'}</p>
               </div>
 
               <div className="quick-prompts-grid">
-                {quickPrompts.map((prompt, index) => (
-                  <button
-                    key={index}
-                    className="prompt-card"
-                    onClick={() => handleQuickPrompt(prompt)}
-                  >
-                    <div className="prompt-icon">
-                      <FiMessageSquare className="prompt-icon-svg" />
-                    </div>
-                    <span className="prompt-text">
-                      {language === 'Swahili' ? prompt.sw : prompt.en}
-                    </span>
+                {quickPrompts.map((p, i) => (
+                  <button key={i} className="prompt-card" onClick={() => handleQuickPrompt(p)}>
+                    <FiMessageSquare />
+                    <span>{language === 'Swahili' ? p.sw : p.en}</span>
                   </button>
                 ))}
               </div>
 
               <div className="disclaimer">
-                <FiAlertTriangle className="disclaimer-icon" />
-                <p className="disclaimer-text">
-                  {language === 'Swahili' ? 
-                    'Ushauri huu ni kwa madhumuni ya maelezo tu. Tafadhali wasiliana na daktari kwa ushauri wa matibabu.' :
-                    'This advice is for informational purposes only. Please consult a doctor for medical advice.'}
-                </p>
+                <FiAlertTriangle />
+                <p>{language === 'Swahili' ? 'Ushauri wa utafiti tu. Tafadhali wasiliana na daktari.' : 'Informational only. Consult a doctor.'}</p>
               </div>
             </div>
           ) : (
             <>
-              {chatHistory.map((message) => (
-                <div key={message.id} className={`message ${message.type}`}>
+              {chatHistory.map(msg => (
+                <article key={msg.id} className={`message ${msg.type}`}>
                   <div className="message-avatar">
-                    {message.type === 'user' ? (
-                      <div className="user-avatar-small">
-                        <FiUser />
+                    {msg.type === 'user' ? <div className="user-avatar"><FiUser /></div> : <div className="bot-avatar"><img src={Logo} alt="bot" /></div>}
+                  </div>
+
+                  <div className="message-body">
+                    <div className="message-header">
+                      <div className="message-sender">{msg.type === 'user' ? (language === 'Swahili' ? 'Wewe' : 'You') : (language === 'Swahili' ? 'Msaidizi wa Afya' : 'Health Assistant')}</div>
+                      <div className="message-time">{msg.timestamp}</div>
+                    </div>
+
+                    <div className={`message-bubble ${msg.type === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+                      <div className="message-text">{msg.content}</div>
+                      <div className="message-meta-row">
+                        <div className="message-actions">
+                          <button className="icon-btn" onClick={() => copyToClipboard(msg.content, msg.id)}>
+                            {copiedMessageId === msg.id ? <FiCheck /> : <FiCopy />}
+                          </button>
+
+                          {msg.type === 'bot' && (
+                            <>
+                              <button className="icon-btn" onClick={() => speakText(msg.content)}><FiSpeaker /></button>
+                              <button className="icon-btn" onClick={() => { setSymptoms(msg.content); textareaRef.current?.focus(); }}><FiRotateCcw /></button>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="rating-block">
+                          <button className={`rate-btn ${ratingMap[msg.id] === 1 ? 'rated' : ''}`} onClick={() => rateMessage(msg.id, 1)}><FiThumbsUp /></button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="bot-avatar">
-                        <img src={Logo} alt="AI" className="bot-avatar-img" />
+                    </div>
+
+                    {/* suggestions for bot responses */}
+                    {msg.type === 'bot' && lastBotId === msg.id && (
+                      <div className="suggestions-row">
+                        {suggestionsForLastBot().map(s => (
+                          <button key={s.id} className="suggestion-pill" onClick={() => { setSymptoms(language === 'Swahili' ? s.textSw : s.textEn); textareaRef.current?.focus(); }}>
+                            {language === 'Swahili' ? s.textSw : s.textEn}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
-                  <div className="message-content">
-                    <div className="message-header">
-                      <span className="message-sender">
-                        {message.type === 'user' ? 
-                          (language === 'Swahili' ? 'Wewe' : 'You') : 
-                          (language === 'Swahili' ? 'Msaidizi wa Afya' : 'Health Assistant')}
-                      </span>
-                      <span className="message-time">{message.timestamp}</span>
-                    </div>
-                    <div className={`message-bubble ${message.type === 'error' ? 'error' : ''}`}>
-                      <div className="message-text">
-                        {formatMessage(message.content)}
-                      </div>
-                      <div className="message-actions">
-                        <button 
-                          className="action-btn"
-                          onClick={() => copyToClipboard(message.content, message.id)}
-                          title={language === 'Swahili' ? 'Nakili' : 'Copy'}
-                        >
-                          {copiedMessageId === message.id ? <FiCheck /> : <FiCopy />}
-                        </button>
-                        {message.type === 'user' && (
-                          <button 
-                            className="action-btn"
-                            onClick={shareChat}
-                            title={language === 'Swahili' ? 'Shiriki' : 'Share'}
-                          >
-                            <FiShare2 />
-                          </button>
-                        )}
-                        {message.type === 'bot' && (
-                          <button 
-                            className="action-btn"
-                            onClick={regenerateResponse}
-                            title={language === 'Swahili' ? 'Tengeneza Upya' : 'Regenerate'}
-                          >
-                            <FiRotateCcw />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                </article>
               ))}
-              
+
               {loading && (
                 <div className="message bot">
                   <div className="message-avatar">
-                    <div className="bot-avatar">
-                      <img src={Logo} alt="AI" className="bot-avatar-img" />
-                    </div>
+                    <div className="bot-avatar"><img src={Logo} alt="ai" /></div>
                   </div>
-                  <div className="message-content">
+                  <div className="message-body">
                     <div className="message-header">
-                      <span className="message-sender">
-                        {language === 'Swahili' ? 'Msaidizi wa Afya' : 'Health Assistant'}
-                      </span>
+                      <div className="message-sender">{language === 'Swahili' ? 'Msaidizi wa Afya' : 'Health Assistant'}</div>
                     </div>
-                    <div className="message-bubble">
-                      <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                      </div>
+                    <div className="message-bubble bot-bubble">
+                      <div className="typing-indicator"><span/><span/><span/></div>
                     </div>
                   </div>
                 </div>
               )}
+
               <div ref={chatEndRef} />
             </>
           )}
-        </div>
+        </section>
 
-        {/* Input Area */}
-        <div className="input-container">
+        {/* Input Area - Compact */}
+        <footer className="input-container">
           <div className="input-wrapper">
             <textarea
               ref={textareaRef}
-              placeholder={language === 'Swahili' ? 
-                'Andika dalili zako hapa...' : 
-                'Describe your symptoms here...'}
-              value={symptoms}
-              onChange={(e) => setSymptoms(e.target.value)}
-              onKeyDown={handleKeyPress}
               className="chat-input"
-              rows="1"
+              rows={1}
+              placeholder={language === 'Swahili' ? 'Andika dalili zako hapa...' : 'Describe your symptoms here...'}
+              value={symptoms}
+              onChange={(e) => {
+                setSymptoms(e.target.value);
+                setLanguage(detectLanguage(e.target.value));
+              }}
+              onKeyDown={handleKeyPress}
               disabled={loading}
             />
-            <div className="input-actions">
-              {symptoms && (
-                <button
-                  onClick={() => setSymptoms('')}
-                  className="action-btn"
-                  aria-label="Clear input"
-                  title={language === 'Swahili' ? 'Futa maandishi' : 'Clear input'}
-                >
-                  <FiX className="w-4 h-4" />
+
+            <div className="input-side">
+              <div className="file-upload">
+                <label className="file-label">
+                  <input type="file" onChange={handleFileChange} />
+                  <FiUpload />
+                </label>
+                {attachedFile && <div className="attached-info"><FiFile /> {attachedFile.name}</div>}
+              </div>
+
+              <div className="input-actions">
+                <button className={`icon-btn mic ${isListening ? 'listening' : ''}`} onClick={toggleListen}>
+                  <FiMic />
                 </button>
-              )}
-              <button
-                onClick={handleAnalyze}
-                disabled={loading || !symptoms.trim()}
-                className={`send-btn ${loading ? 'loading' : ''}`}
-              >
-                {loading ? (
-                  <div className="loading-spinner"></div>
-                ) : (
-                  <FiSend className="send-icon" />
+
+                {symptoms && (
+                  <button className="icon-btn clear" onClick={() => setSymptoms('')}><FiX /></button>
                 )}
-              </button>
+
+                <button className={`send-btn ${loading || !symptoms.trim() ? 'disabled' : ''}`} onClick={() => handleAnalyze()} disabled={loading || !symptoms.trim()}>
+                  {loading ? <div className="loading-spinner"></div> : <FiSend />}
+                </button>
+              </div>
             </div>
           </div>
+
           <div className="input-footer">
-            <p className="disclaimer-small">
-              {language === 'Swahili' ? 
-                'Msaidizi wa Afya. Ushauri wa awali tu. Si badala ya daktari.' :
-                'Health Assistant. Preliminary advice only. Not a substitute for a doctor.'}
-            </p>
+            <div className="disclaimer-small">
+              <FiAlertTriangle />
+              {language === 'Swahili' ? 'Ushauri wa awali tu. Si badala ya daktari.' : 'Preliminary advice only. Not a substitute for a doctor.'}
+            </div>
           </div>
-        </div>
+        </footer>
       </div>
 
-      {/* Modals and Overlays */}
+      {/* Mobile Bottom Navigation */}
+      {isMobile && <MobileNav />}
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="mobile-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Clear History Modal */}
       {showClearModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3 className="modal-title">
-              {language === 'Swahili' ? 'Thibitisha Futa Historia' : 'Confirm Clear History'}
-            </h3>
+            <div className="modal-header">
+              <FiAlertTriangle className="modal-icon" />
+              <h3 className="modal-title">
+                {language === 'Swahili' ? 'Futa Historia' : 'Clear History'}
+              </h3>
+            </div>
             <p className="modal-text">
               {language === 'Swahili' ? 
                 'Je, una uhakika unataka kufuta historia yote?' : 
                 'Are you sure you want to clear all history?'}
             </p>
             <div className="modal-actions">
-              <button onClick={() => setShowClearModal(false)} className="modal-btn modal-btn-cancel">
+              <button onClick={() => setShowClearModal(false)} className="modal-btn cancel">
                 {language === 'Swahili' ? 'Ghairi' : 'Cancel'}
               </button>
-              <button onClick={clearChat} className="modal-btn modal-btn-confirm">
+              <button onClick={clearChat} className="modal-btn confirm">
                 {language === 'Swahili' ? 'Futa' : 'Clear'}
               </button>
             </div>
@@ -593,21 +1000,13 @@ function App() {
         </div>
       )}
 
+      {/* Toast Notification */}
       {copiedMessageId && (
         <div className="toast-notification">
-          {language === 'Swahili' ? 'Imenakiliwa!' : 'Copied to clipboard!'}
+          <FiCheck className="toast-icon" />
+          {language === 'Swahili' ? 'Imenakiliwa!' : 'Copied!'}
         </div>
-      )}
-
-      {/* Overlay for mobile sidebar */}
-      {sidebarOpen && (
-        <div 
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
       )}
     </div>
   );
 }
-
-export default App;
