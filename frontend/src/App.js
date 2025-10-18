@@ -6,10 +6,7 @@ import {
   FiMenu, FiHeart, FiAlertCircle, FiBook, FiBookmark, FiAward
 } from 'react-icons/fi';
 import { 
-  MdLocalHospital, 
   MdEmergency,
-  MdSick,
-  MdPsychology
 } from 'react-icons/md';
 import './App.css';
 import Logo from './images/logo.png';
@@ -70,17 +67,6 @@ export default function App() {
     { en: 'Headache and fatigue', sw: 'Maumivu ya kichwa na uchovu', category: 'neurological', priority: 'routine' },
     { en: 'Sore throat and fever', sw: 'Koo linawasha na homa', category: 'respiratory', priority: 'urgent' },
     { en: 'Stomach pain and nausea', sw: 'Maumivu ya tumbo na kichefuchefu', category: 'digestive', priority: 'routine' },
-  ];
-
-  const symptomChecklists = [
-    {
-      title: 'Common Cold Symptoms',
-      symptoms: ['Runny nose', 'Sneezing', 'Sore throat', 'Cough', 'Mild fever']
-    },
-    {
-      title: 'Flu Symptoms', 
-      symptoms: ['High fever', 'Body aches', 'Fatigue', 'Dry cough', 'Headache']
-    }
   ];
 
   const emergencyProtocols = [
@@ -222,52 +208,6 @@ export default function App() {
     if (f) {
       setAttachedFile(f);
     }
-  };
-
-  const exportAsPDF = () => {
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-    const title = language === 'Swahili' ? 'AfyaChecker - Maongezi' : 'AfyaChecker - Chat';
-    const html = `
-      <html>
-        <head>
-          <title>${title}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color:#111; }
-            .msg { margin-bottom: 16px; padding:12px; border-radius:8px; }
-            .user { background: #e9e7e2; text-align:right; }
-            .bot { background: #eaf2ff; text-align:left; }
-            .meta { font-size:12px; color:#555; margin-bottom:8px; }
-          </style>
-        </head>
-        <body>
-          <h1>${title}</h1>
-          ${chatHistory.map(m => `
-            <div class="msg ${m.type}">
-              <div class="meta"><strong>${m.type === 'user' ? (language === 'Swahili'?'Wewe':'You') : (language === 'Swahili'?'Msaidizi wa Afya':'Health Assistant')}</strong> • ${m.timestamp || ''}</div>
-              <div>${(m.content || '').replace(/\n/g, '<br/>')}</div>
-            </div>
-          `).join('')}
-        </body>
-      </html>
-    `;
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 600);
-  };
-
-  const handleExportHistory = () => {
-    const dataStr = JSON.stringify(chatHistory, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'afya_checker_chat.json';
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const shareChat = () => {
