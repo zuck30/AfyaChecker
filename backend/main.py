@@ -107,7 +107,7 @@ def get_user_prompt(symptoms: str, language: str, is_emergency: bool) -> str:
     base_symptoms = sanitize_symptoms(symptoms)
     
     if language == "Swahili":
-        emergency_note = "**DHARURA:** Hii inaonekana kuwa hali ya dharura ya matibabu. " if is_emergency else ""
+        emergency_note = "DHARURA: Hii inaonekana kuwa hali ya dharura ya matibabu. " if is_emergency else ""
         
         return f"""{emergency_note}Chambua dalili zifuatazo na toa mwongozo wa awali:
 
@@ -121,7 +121,7 @@ Tafadhali toa:
 
 Jibu kwa Kiswahili kwa muundo wazi na rahisi kusoma."""
     else:
-        emergency_note = "**EMERGENCY:** This appears to be a medical emergency. " if is_emergency else ""
+        emergency_note = "EMERGENCY: This appears to be a medical emergency. " if is_emergency else ""
         
         return f"""{emergency_note}Analyze these symptoms and provide preliminary guidance:
 
@@ -191,9 +191,9 @@ async def analyze_symptoms(request: SymptomRequest):
         # Add emergency warning if detected
         if is_emergency:
             if request.language == "Swahili":
-                emergency_warning = "\n\n⚠️ **ONYO LA DHARURA:** Dalili hizi zinaonyesha hali ya dharura ya matibabu. Tafadhali tafuta usaidizi wa matibabu mara moja au piga 112/911."
+                emergency_warning = "\n\n⚠️ ONYO LA DHARURA: Dalili hizi zinaonyesha hali ya dharura ya matibabu. Tafadhali tafuta usaidizi wa matibabu mara moja au piga 112/911."
             else:
-                emergency_warning = "\n\n⚠️ **EMERGENCY WARNING:** These symptoms indicate a medical emergency. Please seek immediate medical attention or call 112/911."
+                emergency_warning = "\n\n⚠️ EMERGENCY WARNING: These symptoms indicate a medical emergency. Please seek immediate medical attention or call 112/911."
             
             analysis = emergency_warning + "\n\n" + analysis
 
