@@ -1,4 +1,4 @@
-# Afyachecker
+# Afyachecker MVP Scaffold.
 
 ![Banner](https://capsule-render.vercel.app/api?type=venom&height=200&color=0:43cea2,100:185a9d&text=%20AfyaChecker&textBg=false&desc=(Chunguza+afya+yako)&descAlign=79&fontAlign=50&descAlignY=70&fontColor=f7f5f5)
 
