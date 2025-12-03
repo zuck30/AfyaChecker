@@ -89,7 +89,7 @@ MUHIMU:
     else:
         return """Your name is AfyaChecker, Afyachecker is a modern health assistant.
 Provide only preliminary health guidance based on symptoms.
-Structure your response in clear, easy-to-read format:
+Structure your response in clear, easy to read format:
 1. Brief symptom analysis
 2. Possible common conditions in Tanzania
 3. Recommended immediate actions (rest, hydration, OTC medications)
@@ -256,7 +256,7 @@ async def root():
             "Multi-language support (English/Swahili)",
             "Emergency detection",
             "Fast AI-powered analysis",
-            "Tanzania-specific health guidance"
+            "Tanzania specific health guidance"
         ]
     }
 
