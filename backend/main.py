@@ -250,7 +250,7 @@ async def analyze_symptoms(request: SymptomRequest):
 @app.get("/")
 async def root():
     return {
-        "message": "Welcome to AfyaChecker API v2.0", 
+        "message": "Welcome to AfyaChecker API v1.0", 
         "status": "operational",
         "features": [
             "Multi-language support (English/Swahili)",
@@ -314,3 +314,9 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
+
+
+
+
+
+
