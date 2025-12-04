@@ -740,7 +740,7 @@ export default function App() {
               <img src={Logo} alt="logo" className="top-logo" />
               <div className="app-title-block">
                 <div className="app-title">AfyaChecker</div>
-                <div className="app-sub">Clinical assistant • quick checks</div>
+                <div className="app-sub">Clinical assistant •| Quick checks</div>
               </div>
             </div>
 
