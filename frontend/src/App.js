@@ -276,7 +276,7 @@ export default function App() {
         return;
       }
     } catch (err) {
-      console.warn('analyze API failed', err);
+      console.warn('failed to analyze API', err);
     }
 
     const fallback = language === 'Swahili'
