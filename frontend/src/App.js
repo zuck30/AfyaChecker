@@ -562,7 +562,7 @@ export default function App() {
             <div className="section">
               <h4 className="section-title">
                 <FiAward />
-                {language === 'Swahili' ? 'Viwanja vya Haraka' : 'Quick Templates'}
+                {language === 'Swahili' ? 'Kwa Haraka' : 'Quick Templates'}
               </h4>
               <div className="templates-grid">
                 {quickPrompts.map((prompt, index) => (
